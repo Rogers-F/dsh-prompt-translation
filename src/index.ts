@@ -5,6 +5,7 @@ import { Config, readConfig, type LiveConfig, type Options } from './config.js'
 import { createTranslator } from './translation.js'
 import { translatePrompts, translateStream } from './pipeline.js'
 import { detectLanguage, type ReturnLanguage } from './direction.js'
+import { registerInlineRoute } from './inline-route.js'
 
 export const name = 'dsh-prompt-translation'
 export const inject = ['llm']
@@ -64,4 +65,7 @@ export function apply(ctx: Context, config: LiveConfig): void {
     // Answers may already use the user's language, so detect their source independently.
     return translateStream(next(), options, createTranslator({ ...options, source: 'auto', target: language }, ctx.llm), signalFor(request.signal))
   })
+  // The inline layer translates paragraphs the Host already rendered; it needs a
+  // route, not a waterfall, so it is registered beside the two hooks above.
+  registerInlineRoute(ctx, config)
 }

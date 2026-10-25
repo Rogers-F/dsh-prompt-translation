@@ -218,3 +218,26 @@ CI 仅在 PR 和 `v*` 标签推送时触发，普通分支推送不运行。PR �
 ## 许可证
 
 [MIT](LICENSE)
+
+## 本分支新增（fork）
+
+在原插件「输入中→英、输出英→中整段替换」之外，新增同一插件内的**段下小字译文**通道，并把原来需要第二个插件（`dsh-plugin-translate`）才能做到的展示效果合并进来，只保留一套翻译配置、一条翻译通道。
+
+| 能力 | 行为 | 配置 |
+|---|---|---|
+| 段下小字译文 | 回答保持英文原文，每个英文段落下方多一行小字中文；中文段落不动 | `inline: true`、`inlineTarget: zh`，同时关闭 `output` |
+| 思考段落译文 | 默认不自动翻，展开思考后点「… 点击翻译本段」才翻 | 同上，`inline` 开启即可 |
+| 选区翻译 | 选中任意文本，浮层显示译文，Esc 关闭 | 同上 |
+| 缓存 | 段落译文按「目标语言 + 原文」缓存并持久化到 localStorage，重复内容不再请求 | 自动 |
+| 重译 | 已翻译的段落点一下即可忽略缓存重译 | 自动 |
+
+实现要点：
+
+- 宿主侧新增 `POST /prompt-translation/inline`（`webServer` + `connection.requestRejection` 信任栅栏），复用插件自己的 `createTranslator`，因此 provider / model / reasoningEffort / timeout / maxChars 与原有翻译完全一致，不存在第二套翻译栈；
+- 客户端新增 `src/client/inline.ts`（DOM 注解层，不改 DSH 渲染代码，卸载即彻底移除）与 `src/client/selection.ts`（选区浮层）；
+- `inline` 与 `output` 互斥：UI 勾选 `inline` 时会自动取消 `output`，否则英文原文会被整段替换，等于没有段落可挂译文；
+- 无头/CLI 宿主没有 `webServer`，路由不会注册，插件其余功能照常。
+
+无头测试：`node scripts/test-inline.mjs`（jsdom + 桩路由，覆盖英文段落翻译、中文跳过、思考点击后翻译、卸载清理）。
+
+参考实现的取舍：`dsh-plugin-translate` 自带一套 provider 注册表与 browser-openai 直连通道，是为了在没有宿主桥时也能翻；本插件的宿主桥已经能拿到同一套模型配置，因此不再重复实现第二条 provider 栈，只保留 `host-llm` 一条通道。

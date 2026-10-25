@@ -23,10 +23,15 @@ export interface Options {
   reasoningEffort: string
   timeoutMs: number
   maxChars: number
+  /** Show a small sub-text translation under each assistant paragraph instead of replacing the answer. */
+  inline: boolean
+  /** Language of that sub-text. */
+  inlineTarget: Exclude<Language, 'auto'>
 }
 export const defaults: Options = {
   enabled: false, source: 'auto', target: 'en', type: 'traditional',
   userPrompt: true, reasoning: false, output: false, engine: 'google',
   apiKey: '', appId: '', region: '', deeplFree: true,
   provider: '', model: '', reasoningEffort: '', timeoutMs: 60000, maxChars: 2000,
+  inline: false, inlineTarget: 'zh',
 }

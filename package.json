@@ -36,10 +36,18 @@
     }
   },
   "dshCompatibility": {
-    "0.2.0-rc.1": { "cordis": "4.0.4" },
-    "0.2.0-rc.2": { "cordis": "4.0.4" },
-    "0.2.1-rc.1": { "cordis": "4.0.5" },
-    "0.2.1-rc.2": { "cordis": "4.0.5" }
+    "0.2.0-rc.1": {
+      "cordis": "4.0.4"
+    },
+    "0.2.0-rc.2": {
+      "cordis": "4.0.4"
+    },
+    "0.2.1-rc.1": {
+      "cordis": "4.0.5"
+    },
+    "0.2.1-rc.2": {
+      "cordis": "4.0.5"
+    }
   },
   "scripts": {
     "build": "node scripts/build.mjs && tsc -p tsconfig.build.json",
@@ -52,7 +60,8 @@
     "pack:check": "node scripts/package-artifact.mjs",
     "host:install": "node scripts/install-host.mjs",
     "test:host": "node scripts/full-host-smoke.mjs",
-    "check": "npm run typecheck && npm test && npm run test:scripts && npm run pack:check"
+    "check": "npm run typecheck && npm test && npm run test:scripts && npm run pack:check",
+    "test:inline": "node scripts/test-inline.mjs"
   },
   "engines": {
     "node": "^22.19.0 || >=24"

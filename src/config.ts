@@ -21,6 +21,8 @@ export const Config = Schema.object({
   reasoningEffort: field(Schema.string().default(''), '推理强度 ID，空值使用模型默认值'),
   timeoutMs: field(Schema.number().min(1000).max(300000).step(1).default(60000), '翻译超时（毫秒）'),
   maxChars: field(Schema.number().min(100).max(4000).step(1).default(2000), '每次翻译最大 Unicode 字符数'),
+  inline: field(Schema.boolean().default(false), '英文段落下方显示小字译文（保留原文，不做整段替换）'),
+  inlineTarget: field(Schema.union(lang.filter(x => x !== 'auto')).default('zh'), '小字译文语言'),
 })
 export type LiveConfig = { [K in keyof Options]: Options[K] | { get(): Options[K] } }
 /** Read one consistent configuration snapshot for a translation operation. */

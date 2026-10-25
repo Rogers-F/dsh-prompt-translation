@@ -110,6 +110,11 @@ export function SettingsCard(props: Props) {
       <div className="dsh-pt-row"><LanguageSelect source value={draft.source} onChange={next => edit('source', next)} /><span>→</span><LanguageSelect value={draft.target} onChange={next => { if (next !== 'auto') edit('target', next) }} /></div>
       <label>翻译类型<select value={draft.type} onChange={event => edit('type', event.target.value as Options['type'])}><option value="traditional">传统翻译接口</option><option value="agent">智能体（已有模型）</option></select></label>
       <div className="dsh-pt-row">{(['userPrompt', 'reasoning', 'output'] as const).map((key, index) => <label key={key}><input type="checkbox" checked={draft[key]} onChange={event => edit(key, event.target.checked)} />{['用户提示词', '思考内容', '输出内容'][index]}</label>)}</div>
+      <label><input type="checkbox" checked={draft.inline} onChange={event => { const next = event.target.checked; edit('inline', next); if (next && draft.output) edit('output', false) }} />英文段落下方显示小字译文</label>
+      {draft.inline && <div className="dsh-pt-row">
+        <LanguageSelect value={draft.inlineTarget} onChange={next => { if (next !== 'auto') edit('inlineTarget', next as Options['inlineTarget']) }} />
+        <small>保留英文原文，只在每段下面加一行译文；需要关闭「输出内容」。</small>
+      </div>}
       {draft.type === 'traditional' ? <>
         <label>翻译服务<select value={draft.engine} onChange={event => { setSaveError(''); setPatch(current => ({ ...current, engine: event.target.value as Options['engine'], apiKey: '' })) }}><option value="baidu">百度</option><option value="google">Google Cloud Translation</option><option value="deepl">DeepL</option><option value="microsoft">Microsoft Translator</option></select></label>
         {text('apiKey', draft.engine === 'baidu' ? '百度密钥' : 'API 密钥')}

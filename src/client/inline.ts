@@ -27,11 +27,16 @@
  * @module dsh-prompt-translation/client/inline
  */
 
+import { PROMPT_ORIGINAL_MARKER } from './presentation.js'
+
 /** Marks every node this layer injects, so removal is exact. */
 const OWNED = 'data-dsh-pt-inline'
 
 /** Marks a block this layer is already tracking. */
 const CLAIMED = 'data-dsh-pt-inline-anchor'
+
+/** A rendered user-message bubble (the prompt side). */
+const BUBBLE = '[class*="_bubble"]'
 
 /** A rendered Markdown document (the scan container). */
 const MARKDOWN = '[class*="_markdown_"], [class$="_markdown"]'
@@ -151,6 +156,7 @@ export class InlineLayer {
   readonly #entries = new Map<HTMLElement, Entry>()
   readonly #queue: Entry[] = []
   readonly #inflight = new Set<AbortController>()
+  readonly #promptLines = new Set<HTMLElement>()
   readonly #cache = loadCache()
   #observer: MutationObserver | undefined
   #timer: number | undefined
@@ -192,6 +198,8 @@ export class InlineLayer {
 
   /** Remove every injected node and claim. */
   clear(): void {
+    for (const line of this.#promptLines) line.remove()
+    this.#promptLines.clear()
     for (const [region, entry] of this.#entries) {
       entry.node.remove()
       region.removeAttribute(CLAIMED)
@@ -226,7 +234,48 @@ export class InlineLayer {
       }
     }
     for (const region of Array.from(this.#entries.keys())) if (!seen.has(region) || !region.isConnected) this.#retire(region)
+    this.#annotatePrompts()
     this.#flush()
+  }
+
+  /**
+   * Split a user bubble's text at the presentation marker: the translated
+   * prompt stays in the bubble, the original moves into a sub-text line.
+   *
+   * The marker rather than a structural hook, because the bubble renders one
+   * prepared `text` string; splitting it here keeps the native bubble chrome,
+   * copy button and timestamp untouched. A re-render restores the marker and the
+   * next pass splits it again.
+   */
+  #annotatePrompts(): void {
+    for (const bubble of Array.from(document.querySelectorAll<HTMLElement>(BUBBLE))) {
+      // 4 is NodeFilter.SHOW_TEXT; the constant is not always global (jsdom, workers).
+      const walker = document.createTreeWalker(bubble, 4)
+      const hits: Text[] = []
+      for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
+        if ((node.textContent ?? '').includes(PROMPT_ORIGINAL_MARKER)) hits.push(node as Text)
+      }
+      for (const text of hits) {
+        const raw = text.textContent ?? ''
+        const at = raw.indexOf(PROMPT_ORIGINAL_MARKER)
+        const lead = raw.slice(0, at).replace(/\s+$/u, '')
+        const original = raw.slice(at + PROMPT_ORIGINAL_MARKER.length).trim()
+        text.textContent = lead
+        if (original === '') continue
+        const line = document.createElement('div')
+        line.setAttribute(OWNED, '1')
+        line.className = 'dsh-pt-inline'
+        line.textContent = original
+        this.#promptLines.add(line)
+        const anchor = text.parentElement
+        try {
+          if (anchor === null || anchor === bubble) bubble.append(line)
+          else anchor.insertAdjacentElement('afterend', line)
+        } catch (error) {
+          this.log(`prompt annotation failed: ${String((error as Error)?.message ?? error)}`)
+        }
+      }
+    }
   }
 
   /** Claim one region, or re-claim it when its prose changed under us. */

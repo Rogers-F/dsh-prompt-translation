@@ -20,7 +20,14 @@ const out = await mkdtemp(join(tmpdir(), 'dsh-pt-inline-'))
 try {
   const bundle = join(out, 'inline.mjs')
   await build({
-    entryPoints: ['src/client/inline.ts'],
+    stdin: {
+      contents: [
+        "export { InlineLayer } from './inline.ts'",
+        "export { PROMPT_ORIGINAL_MARKER } from './presentation.ts'",
+      ].join('\n'),
+      resolveDir: join(process.cwd(), 'src/client'),
+      loader: 'ts',
+    },
     bundle: true,
     platform: 'neutral',
     format: 'esm',
@@ -44,7 +51,7 @@ try {
     }
   }
 
-  const { InlineLayer } = await import(pathToFileURL(bundle).href)
+  const { InlineLayer, PROMPT_ORIGINAL_MARKER } = await import(pathToFileURL(bundle).href)
 
   const settle = () => new Promise(resolve => setTimeout(resolve, 320))
   const assistant = document.createElement('div')
@@ -54,6 +61,11 @@ try {
   reasoning.setAttribute('data-variant', 'think')
   reasoning.innerHTML = '<div class="_markdown_1ypvv_5"><p>Let me think about this.</p></div>'
   document.body.append(reasoning)
+  // A user bubble as the presentation half prepares it: translated prompt, marker, original.
+  const bubble = document.createElement('div')
+  bubble.className = 'LOmM4q_bubble'
+  bubble.textContent = `Hello, this is a test.${PROMPT_ORIGINAL_MARKER}你好，这是一个测试。`
+  document.body.append(bubble)
 
   const layer = new InlineLayer(() => ({ enabled: true, target: 'zh' }), message => console.log('[layer]', message))
   layer.start()
@@ -66,6 +78,8 @@ try {
     ['assistant paragraph translated', text.some(value => value === '译:Hello world, this is prose.')],
     ['chinese paragraph untouched', !text.some(value => value.includes('这是中文段落'))],
     ['reasoning waits for a click', reasoningLine !== null && reasoningLine.textContent.includes('点击翻译本段')],
+    ['prompt bubble leads with the translated text', bubble.textContent.trim().startsWith('Hello, this is a test.')],
+    ['prompt original becomes sub-text', bubble.querySelector('[data-dsh-pt-inline]')?.textContent === '你好，这是一个测试。'],
   ]
 
   reasoningLine?.dispatchEvent(new window.MouseEvent('click', { bubbles: true }))

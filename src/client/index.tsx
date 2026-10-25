@@ -22,7 +22,14 @@ interface ClientContext {
 
 /** Register plugin-list settings, a composer control, and the inline sub-text layer; dispose with the fiber. */
 export function apply(ctx: ClientContext): void {
-  ctx.inject?.(['uiConversation'], child => { child.effect(() => installPresentation(child.uiConversation.events)) })
+  // The inline layer reads a settings snapshot kept in sync with the settings
+  // document: the layer is DOM code, not a React subtree, so it cannot use the
+  // settings hook the card uses. The prompt presentation reads it too, to decide
+  // whether the bubble leads with the translated text.
+  let snapshot: Options = { ...defaults }
+  ctx.inject?.(['uiConversation'], child => {
+    child.effect(() => installPresentation(child.uiConversation.events, () => snapshot.inline))
+  })
   const listeners = new Set<() => void>()
   const subscribe = (listener: () => void) => { listeners.add(listener); return () => { listeners.delete(listener) } }
   const props = { api: ctx.remote.settings, catalog: ctx.remote.session, subscribe }
@@ -38,7 +45,6 @@ export function apply(ctx: ClientContext): void {
   // The inline layer reads a settings snapshot kept in sync with the settings
   // document: the layer is DOM code, not a React subtree, so it cannot use the
   // settings hook the card uses.
-  let snapshot: Options = { ...defaults }
   const layer = new InlineLayer(
     () => ({ enabled: snapshot.enabled && snapshot.inline, target: snapshot.inlineTarget }),
     message => ctx.logger?.warn?.(`dsh-prompt-translation: ${message}`),

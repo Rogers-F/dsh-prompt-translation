@@ -1,5 +1,5 @@
 import { expect, it, vi } from 'vitest'
-import { presentPrompt, installPresentation, type Definition } from '../src/client/presentation.js'
+import { presentPrompt, installPresentation, PROMPT_ORIGINAL_MARKER, type Definition } from '../src/client/presentation.js'
 import { promptAudit } from '../src/audit.js'
 import { translatePrompts } from '../src/pipeline.js'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
@@ -21,6 +21,21 @@ it('persists original text and language direction alongside the exact model inpu
   const mixed = { ...restored, content: [image, { type: 'text', text: 'こん' }, { type: 'text', text: 'にちは' }] }
   expect(presentPrompt(mixed, 'trajectory').content).toEqual([image, ...trajectory.content])
   expect(mixed.content).toHaveLength(3)
+})
+it('leads the chat bubble with the translated prompt when inline display is on', async () => {
+  const original = createUserMessage({ source: { kind: 'user' }, content: [{ type: 'text', text: '你好' }] })
+  const [sent] = await translatePrompts([original], async () => 'Hello', undefined, { source: 'zh', target: 'en' })
+  const restored = JSON.parse(JSON.stringify(sent))
+  expect(presentPrompt(restored, 'chat', { inline: true }).content).toEqual([
+    { type: 'text', text: 'Hello' },
+    { type: 'text', text: `${PROMPT_ORIGINAL_MARKER}你好` },
+  ])
+  expect(presentPrompt(restored, 'chat').content).toEqual(original.content)
+  const chat: Definition = { kind: 'input-message', buildViewNode: () => ({ data: restored }) }
+  const entries = [chat]
+  const dispose = installPresentation({ entries: () => entries, subscribe: () => () => {}, register: () => () => {} }, () => true)
+  expect(JSON.stringify(chat.buildViewNode!())).toContain(PROMPT_ORIGINAL_MARKER)
+  dispose()
 })
 it('retranslations use the original instead of translating an older translation', async () => {
   const original = createUserMessage({ source: { kind: 'user' }, content: [{ type: 'text', text: '你好' }] })

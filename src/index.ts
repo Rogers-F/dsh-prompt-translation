@@ -6,7 +6,6 @@ import { createTranslator } from './translation.js'
 import { translatePrompts, translateStream } from './pipeline.js'
 import { detectLanguage, type ReturnLanguage } from './direction.js'
 import { registerInlineRoute } from './inline-route.js'
-import { registerAnswerLanguage } from './answer-language.js'
 
 export const name = 'dsh-prompt-translation'
 export const inject = ['llm']
@@ -69,7 +68,4 @@ export function apply(ctx: Context, config: LiveConfig): void {
   // The inline layer translates paragraphs the Host already rendered; it needs a
   // route, not a waterfall, so it is registered beside the two hooks above.
   registerInlineRoute(ctx, config)
-  // With the sub-text layer on, the answer must stay in the target language or
-  // there is nothing English to annotate; state that once in the system prompt.
-  registerAnswerLanguage(ctx, config)
 }

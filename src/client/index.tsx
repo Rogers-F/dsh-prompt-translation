@@ -4,6 +4,7 @@ import { SettingsCard, QuickPicker, type Props } from './components.js'
 import { loadSettings, type SettingsApi, type Catalog } from './settings.js'
 import { InlineLayer } from './inline.js'
 import { installSelectionTranslation } from './selection.js'
+import { TranslateOverlay } from './overlay.js'
 import { defaults, type Options } from '../options.js'
 export const name = 'dsh-prompt-translation'
 export const inject = ['slots', 'remote', 'remote.settings']
@@ -27,6 +28,13 @@ export function apply(ctx: ClientContext): void {
   const props = { api: ctx.remote.settings, catalog: ctx.remote.session, subscribe }
   ctx.effect(() => ctx.slots.inject('plugins.bundle.config', () => ctx.slots.register({ name: 'plugins.bundle.config', id: name, key: name, inject: () => props }, SettingsCard)))
   ctx.effect(() => ctx.slots.inject('conversation.input.left', () => ctx.slots.register({ name: 'conversation.input.left', id: name, order: -1000, inject: () => props }, QuickPicker)))
+  // The frame-wide badge and its short-path panel: the composer control is easy
+  // to miss, and the panel's test button is the quickest way to prove the Host
+  // route is alive.
+  ctx.effect(() => ctx.slots.inject('shell.overlay', () => ctx.slots.register(
+    { name: 'shell.overlay', id: `${name}-frame`, inject: () => props },
+    TranslateOverlay as unknown as typeof SettingsCard,
+  )))
   // The inline layer reads a settings snapshot kept in sync with the settings
   // document: the layer is DOM code, not a React subtree, so it cannot use the
   // settings hook the card uses.

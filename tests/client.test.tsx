@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client'
 import { afterEach, expect, it, vi } from 'vitest'
 import { QuickPicker, SettingsCard, type Props } from '../src/client/components.js'
 import { saveSettings, type SettingsApi } from '../src/client/settings.js'
+import { TranslateOverlay } from '../src/client/overlay.js'
 import { defaults } from '../src/options.js'
 import { apply } from '../src/client/index.js'
 
@@ -77,10 +78,10 @@ it('registers both host slots and revokes styles and subscriptions on unload', (
     remote: { settings: f.api, $on: () => offRemote },
     slots: { inject: (_name, fn) => fn(), register },
   })
-  expect(register.mock.calls.map(call => (call as unknown as [{ name: string }])[0].name)).toEqual(['plugins.bundle.config', 'conversation.input.left'])
+  expect(register.mock.calls.map(call => (call as unknown as [{ name: string }])[0].name)).toEqual(['plugins.bundle.config', 'conversation.input.left', 'shell.overlay'])
   expect(document.querySelector('style[data-dsh-prompt-translation]')).not.toBeNull()
   for (const dispose of disposers.reverse()) dispose()
-  expect(removeSlot).toHaveBeenCalledTimes(2)
+  expect(removeSlot).toHaveBeenCalledTimes(3)
   expect(offRemote).toHaveBeenCalledOnce()
   expect(offReconnect).toHaveBeenCalledOnce()
   expect(document.querySelector('style[data-dsh-prompt-translation]')).toBeNull()
@@ -140,4 +141,23 @@ it('discards staged settings and collapses the themed card', async () => {
   expect(host.querySelector('.dsh-pt-tag')).toBeNull()
   await act(async () => (host.querySelector('.dsh-pt-card-header') as HTMLButtonElement).click())
   expect((host.querySelector('.dsh-pt-card-body') as HTMLElement).hidden).toBe(true)
+})
+it('opens the corner panel from the badge and keeps sub-text exclusive with output', async () => {
+  const f = fixture()
+  await f.api.mutate('prompt-translation', [{ op: 'set', path: ['output'], value: true }], 1)
+  const host = document.createElement('div'); document.body.append(host)
+  const root = createRoot(host); cleanup.push(() => root.unmount())
+  await act(async () => root.render(createElement(TranslateOverlay, f.props)))
+  const badge = host.querySelector('.dsh-pt-badge') as HTMLButtonElement
+  expect(badge.textContent).toBe('译·关')
+  await act(async () => badge.click())
+  expect(host.querySelector('.dsh-pt-panel')).not.toBeNull()
+  const boxes = [...host.querySelectorAll('.dsh-pt-panel input[type=checkbox]')] as HTMLInputElement[]
+  await act(async () => boxes[boxes.length - 1]!.click())
+  expect(f.api.mutate).toHaveBeenLastCalledWith('prompt-translation', [
+    { op: 'set', path: ['inline'], value: true },
+    { op: 'set', path: ['output'], value: false },
+  ], 1)
+  await act(async () => (host.querySelector('.dsh-pt-panel-close') as HTMLButtonElement).click())
+  expect(host.querySelector('.dsh-pt-panel')).toBeNull()
 })
